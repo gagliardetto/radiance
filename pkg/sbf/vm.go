@@ -83,3 +83,48 @@ type ExcCallDest struct {
 func (e ExcCallDest) Error() string {
 	return fmt.Sprintf("unknown symbol or syscall 0x%08x", e.Imm)
 }
+
+type Config struct {
+	// Maximum call depth
+	MaxCallDepth int
+	// Size of a stack frame in bytes, must match the size specified in the LLVM BPF backend
+	StackFrameSize int
+	// Enables gaps in VM address space between the stack frames
+	EnableStackFrameGaps bool
+	// Maximal pc distance after which a new instruction meter validation is emitted by the JIT
+	InstructionMeterCheckpointDistance int
+	// Enable instruction meter and limiting
+	EnableInstructionMeter bool
+	// Enable instruction tracing
+	EnableInstructionTracing bool
+	// Enable dynamic string allocation for labels
+	EnableSymbolAndSectionLabels bool
+	// Reject ELF files containing issues that the verifier did not catch before (up to v0.2.21)
+	RejectBrokenElfs bool
+	// Ratio of native host instructions per random no-op in JIT (0 = OFF)
+	NoopInstructionRate int
+	// Enable disinfection of immediate values and offsets provided by the user in JIT
+	SanitizeUserProvidedValues bool
+	// Encrypt the environment registers in JIT
+	EncryptEnvironmentRegisters bool
+	// Throw ElfError::SymbolHashCollision when a BPF function collides with a registered syscall
+	SyscallBpfFunctionHashCollision bool
+	// Have the verifier reject "callx r10"
+	RejectCallxR10 bool
+	// Use dynamic stack frame sizes
+	DynamicStackFrames bool
+	// Enable native signed division
+	EnableSdiv bool
+	// Avoid copying read only sections when possible
+	OptimizeRodata bool
+	// Support syscalls via pseudo calls (insn.src = 0)
+	StaticSyscalls bool
+	// Allow sh_addr != sh_offset in elf sections. Used in SBFv2 to align
+	// section vaddrs to MM_PROGRAM_START.
+	EnableElfVaddr bool
+	// Use the new ELF parser
+	NewElfParser bool
+	// Ensure that rodata sections don't exceed their maximum allowed size and
+	// overlap with the stack
+	RejectRodataStackOverlap bool
+}
