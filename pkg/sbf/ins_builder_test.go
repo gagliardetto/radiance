@@ -299,3 +299,91 @@ func TestStoreDoubleWordFromDstIntoSrcAddress(t *testing.T) { // line 1103
 
 	require.Equal(t, program.Bytes(), []byte{0x7b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 }
+func TestLoadWordFromSetSrcWithOffset(t *testing.T) {
+	program := NewBpfCode()
+	program.
+		LoadX(MemSizeWord).
+		SetDst(0x01).
+		SetSrc(0x02).
+		SetOff(0x00_02).
+		Push()
+
+	require.Equal(t, []byte{0x61, 0x21, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadHalfWordFromSetSrcWithOffset(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadX(MemSizeHalfWord).SetDst(0x02).SetSrc(0x01).SetOff(0x1122).Push()
+
+	require.Equal(t, []byte{0x69, 0x12, 0x22, 0x11, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadByteFromSetSrcWithOffset(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadX(MemSizeByte).SetDst(0x01).SetSrc(0x04).SetOff(0x00_11).Push()
+
+	require.Equal(t, []byte{0x71, 0x41, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadDoubleWordFromSetSrcWithOffset(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadX(MemSizeDoubleWord).SetDst(0x04).SetSrc(0x05).SetOff(0x4455).Push()
+	require.Equal(t, []byte{0x79, 0x54, 0x55, 0x44, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadDoubleWord(t *testing.T) {
+	program := NewBpfCode()
+	program.
+		Load(MemSizeDoubleWord).
+		SetDst(0x01).
+		SetImm(0x00_01_02_03).
+		Push()
+
+	require.Equal(t, program.Bytes(), []byte{0x18, 0x01, 0x00, 0x00, 0x03, 0x02, 0x01, 0x00})
+}
+func TestLoadAbsWord(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadAbs(MemSizeWord).Push()
+
+	require.Equal(t, []byte{0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadAbsHalfWord(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadAbs(MemSizeHalfWord).SetDst(0x05).Push()
+
+	require.Equal(t, []byte{0x28, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadAbsByte(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadAbs(MemSizeByte).SetDst(0x01).Push()
+
+	require.Equal(t, program.Bytes(), []byte{0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+}
+func TestLoadAbsDoubleWord(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadAbs(MemSizeDoubleWord).SetDst(0x01).SetImm(0x01_02_03_04).Push()
+
+	require.Equal(t, []byte{0x38, 0x01, 0x00, 0x00, 0x04, 0x03, 0x02, 0x01}, program.Bytes())
+}
+func TestLoadIndirectWord(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadInd(MemSizeWord).Push()
+
+	require.Equal(t, []byte{0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadIndirectHalfWord(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadInd(MemSizeHalfWord).Push()
+
+	require.Equal(t, []byte{
+		0x48, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	}, program.Bytes())
+}
+func TestLoadIndirectByte(t *testing.T) {
+	program := NewBpfCode()
+	program.LoadInd(MemSizeByte).Push()
+
+	require.Equal(t, []byte{0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
+func TestLoadIndirectDoubleWord(t *testing.T) { // line 1286
+	program := NewBpfCode()
+	program.LoadInd(MemSizeDoubleWord).Push()
+
+	require.Equal(t, []byte{0x58, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, program.Bytes())
+}
