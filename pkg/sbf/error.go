@@ -11,6 +11,7 @@ type UserDefinedError interface {
 type EbpfError interface {
 	error
 	isEbpfError()
+	ErrorKindIndex() int
 }
 
 var (
@@ -39,6 +40,59 @@ var (
 	_ EbpfError = &VerifierError{}
 )
 
+func ErrorKindIndexToErrorName(index int) string {
+	switch index {
+	case 0:
+		return "UserError"
+	case 1:
+		return "ElfError"
+	case 2:
+		return "SyscallAlreadyRegistered"
+	case 3:
+		return "SyscallNotRegistered"
+	case 4:
+		return "SyscallAlreadyBound"
+	case 5:
+		return "TooManySyscalls"
+	case 6:
+		return "CallDepthExceeded"
+	case 7:
+		return "ExitRootCallFrame"
+	case 8:
+		return "DivideByZero"
+	case 9:
+		return "DivideOverflow"
+	case 10:
+		return "ExecutionOverrun"
+	case 11:
+		return "CallOutsideTextSegment"
+	case 12:
+		return "ExceededMaxInstructions"
+	case 13:
+		return "JitNotCompiled"
+	case 14:
+		return "InvalidVirtualAddress"
+	case 15:
+		return "InvalidMemoryRegion"
+	case 16:
+		return "AccessViolation"
+	case 17:
+		return "StackAccessViolation"
+	case 18:
+		return "InvalidInstruction"
+	case 19:
+		return "UnsupportedInstruction"
+	case 20:
+		return "ExhaustedTextSegment"
+	case 21:
+		return "LibcInvocationFailed"
+	case 22:
+		return "VerifierError"
+	default:
+		return "unknown error"
+	}
+}
+
 // User defined error
 type UserError struct {
 	Err error
@@ -52,6 +106,9 @@ func (e *UserError) Error() string {
 }
 
 func (e *UserError) isEbpfError() {}
+func (e *UserError) ErrorKindIndex() int {
+	return 0
+}
 
 // ELF error
 type ElfError struct {
@@ -66,6 +123,9 @@ func (e *ElfError) Error() string {
 }
 
 func (e *ElfError) isEbpfError() {}
+func (e *ElfError) ErrorKindIndex() int {
+	return 1
+}
 
 // / Syscall was already registered before
 type SyscallAlreadyRegistered struct {
@@ -77,6 +137,9 @@ func (e *SyscallAlreadyRegistered) Error() string {
 }
 
 func (e *SyscallAlreadyRegistered) isEbpfError() {}
+func (e *SyscallAlreadyRegistered) ErrorKindIndex() int {
+	return 2
+}
 
 // / Syscall was not registered before bind
 type SyscallNotRegistered struct {
@@ -88,6 +151,9 @@ func (e *SyscallNotRegistered) Error() string {
 }
 
 func (e *SyscallNotRegistered) isEbpfError() {}
+func (e *SyscallNotRegistered) ErrorKindIndex() int {
+	return 3
+}
 
 // / Syscall already has a bound context object
 type SyscallAlreadyBound struct {
@@ -99,6 +165,9 @@ func (e *SyscallAlreadyBound) Error() string {
 }
 
 func (e *SyscallAlreadyBound) isEbpfError() {}
+func (e *SyscallAlreadyBound) ErrorKindIndex() int {
+	return 4
+}
 
 // / Too many syscalls, increase SyscallRegistry::MAX_SYSCALLS.
 type TooManySyscalls struct{}
@@ -108,6 +177,9 @@ func (e *TooManySyscalls) Error() string {
 }
 
 func (e *TooManySyscalls) isEbpfError() {}
+func (e *TooManySyscalls) ErrorKindIndex() int {
+	return 5
+}
 
 // / Exceeded max BPF to BPF call depth
 type CallDepthExceeded struct {
@@ -120,6 +192,9 @@ func (e *CallDepthExceeded) Error() string {
 }
 
 func (e *CallDepthExceeded) isEbpfError() {}
+func (e *CallDepthExceeded) ErrorKindIndex() int {
+	return 6
+}
 
 // / Attempt to exit from root call frame
 type ExitRootCallFrame struct{}
@@ -129,6 +204,9 @@ func (e *ExitRootCallFrame) Error() string {
 }
 
 func (e *ExitRootCallFrame) isEbpfError() {}
+func (e *ExitRootCallFrame) ErrorKindIndex() int {
+	return 7
+}
 
 // / Divide by zero"
 type DivideByZero struct {
@@ -140,6 +218,9 @@ func (e *DivideByZero) Error() string {
 }
 
 func (e *DivideByZero) isEbpfError() {}
+func (e *DivideByZero) ErrorKindIndex() int {
+	return 8
+}
 
 // / Divide overflow
 type DivideOverflow struct {
@@ -151,6 +232,9 @@ func (e *DivideOverflow) Error() string {
 }
 
 func (e *DivideOverflow) isEbpfError() {}
+func (e *DivideOverflow) ErrorKindIndex() int {
+	return 9
+}
 
 // / Exceeded max instructions allowed
 type ExecutionOverrun struct {
@@ -163,6 +247,9 @@ func (e *ExecutionOverrun) Error() string {
 }
 
 func (e *ExecutionOverrun) isEbpfError() {}
+func (e *ExecutionOverrun) ErrorKindIndex() int {
+	return 10
+}
 
 // / Attempt to call to an address outside the text segment
 type CallOutsideTextSegment struct {
@@ -175,6 +262,9 @@ func (e *CallOutsideTextSegment) Error() string {
 }
 
 func (e *CallOutsideTextSegment) isEbpfError() {}
+func (e *CallOutsideTextSegment) ErrorKindIndex() int {
+	return 11
+}
 
 // / Exceeded max instructions allowed
 type ExceededMaxInstructions struct {
@@ -187,6 +277,9 @@ func (e *ExceededMaxInstructions) Error() string {
 }
 
 func (e *ExceededMaxInstructions) isEbpfError() {}
+func (e *ExceededMaxInstructions) ErrorKindIndex() int {
+	return 12
+}
 
 // / Program has not been JIT-compiled
 type JitNotCompiled struct{}
@@ -196,6 +289,9 @@ func (e *JitNotCompiled) Error() string {
 }
 
 func (e *JitNotCompiled) isEbpfError() {}
+func (e *JitNotCompiled) ErrorKindIndex() int {
+	return 13
+}
 
 // / Invalid virtual address
 type InvalidVirtualAddress struct {
@@ -207,6 +303,9 @@ func (e *InvalidVirtualAddress) Error() string {
 }
 
 func (e *InvalidVirtualAddress) isEbpfError() {}
+func (e *InvalidVirtualAddress) ErrorKindIndex() int {
+	return 14
+}
 
 // / Memory region index or virtual address space is invalid
 type InvalidMemoryRegion struct {
@@ -218,6 +317,9 @@ func (e *InvalidMemoryRegion) Error() string {
 }
 
 func (e *InvalidMemoryRegion) isEbpfError() {}
+func (e *InvalidMemoryRegion) ErrorKindIndex() int {
+	return 15
+}
 
 // / Access violation (general)
 type AccessViolation struct {
@@ -239,6 +341,9 @@ func (e *AccessViolation) Error() string {
 }
 
 func (e *AccessViolation) isEbpfError() {}
+func (e *AccessViolation) ErrorKindIndex() int {
+	return 16
+}
 
 // / Access violation (stack specific)
 type StackAccessViolation struct {
@@ -260,6 +365,9 @@ func (e *StackAccessViolation) Error() string {
 }
 
 func (e *StackAccessViolation) isEbpfError() {}
+func (e *StackAccessViolation) ErrorKindIndex() int {
+	return 17
+}
 
 // / Invalid instruction
 type InvalidInstruction struct {
@@ -271,6 +379,9 @@ func (e *InvalidInstruction) Error() string {
 }
 
 func (e *InvalidInstruction) isEbpfError() {}
+func (e *InvalidInstruction) ErrorKindIndex() int {
+	return 18
+}
 
 // / Unsupported instruction
 type UnsupportedInstruction struct {
@@ -282,6 +393,9 @@ func (e *UnsupportedInstruction) Error() string {
 }
 
 func (e *UnsupportedInstruction) isEbpfError() {}
+func (e *UnsupportedInstruction) ErrorKindIndex() int {
+	return 19
+}
 
 // / Compilation is too big to fit
 type ExhaustedTextSegment struct {
@@ -293,6 +407,9 @@ func (e *ExhaustedTextSegment) Error() string {
 }
 
 func (e *ExhaustedTextSegment) isEbpfError() {}
+func (e *ExhaustedTextSegment) ErrorKindIndex() int {
+	return 20
+}
 
 // / Libc function call returned an error
 type LibcInvocationFailed struct {
@@ -311,6 +428,9 @@ func (e *LibcInvocationFailed) Error() string {
 }
 
 func (e *LibcInvocationFailed) isEbpfError() {}
+func (e *LibcInvocationFailed) ErrorKindIndex() int {
+	return 21
+}
 
 // / ELF error
 type VerifierError struct {
@@ -322,3 +442,6 @@ func (e *VerifierError) Error() string {
 }
 
 func (e *VerifierError) isEbpfError() {}
+func (e *VerifierError) ErrorKindIndex() int {
+	return 22
+}

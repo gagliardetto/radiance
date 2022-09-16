@@ -104,7 +104,7 @@ func (e *JitProgramSections) Drop() error {
 	pcLocTableSize := roundToPageSize(uint64(e.PcSection.Len()), u64(e.PageSize))
 	codeSize := roundToPageSize(uint64(e.TextSection.Len()), u64(e.PageSize))
 	if pcLocTableSize+codeSize > 0 {
-		// TODO: is the unmapping valid even if separately?
+		// TODO: is the unmapping valid even if done separately?
 		err := unix.Munmap(e.PcSection.b)
 		if err != nil {
 			return fmt.Errorf("sys/unix.Munmap failed: %v", err)

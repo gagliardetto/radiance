@@ -3,6 +3,8 @@ package sbf
 import (
 	"errors"
 	"fmt"
+	"io"
+	"unsafe"
 )
 
 // VM is the virtual machine abstraction, implemented by each executor.
@@ -102,7 +104,7 @@ type Config struct {
 	// Reject ELF files containing issues that the verifier did not catch before (up to v0.2.21)
 	RejectBrokenElfs bool
 	// Ratio of native host instructions per random no-op in JIT (0 = OFF)
-	NoopInstructionRate int
+	NoopInstructionRate uint64
 	// Enable disinfection of immediate values and offsets provided by the user in JIT
 	SanitizeUserProvidedValues bool
 	// Encrypt the environment registers in JIT
@@ -127,4 +129,68 @@ type Config struct {
 	// Ensure that rodata sections don't exceed their maximum allowed size and
 	// overlap with the stack
 	RejectRodataStackOverlap bool
+}
+
+// Returns the size of the stack memory region
+func (conf *Config) StackSize() int {
+	return conf.StackFrameSize * conf.MaxCallDepth
+}
+
+const MAX_SYSCALLS uint64 = 128
+
+type ProgramResult struct {
+	// The return value of the program
+	Retval uint64
+	Err    EbpfError
+}
+
+type ProgramEnvironment struct {
+	/// The MemoryMapping describing the address space of the program
+	memory_mapping *MemoryMapping
+	/// Pointers to the context objects of syscalls
+	syscall_context_objects [MAX_SYSCALLS]*u8 // TODO: what type is this?
+	/// The instruction tracer
+	tracer *Tracer
+}
+
+const (
+	MEMORY_MAPPING_OFFSET = 0
+	SYSCALLS_OFFSET       = MEMORY_MAPPING_OFFSET + unsafe.Sizeof(MemoryMapping{})
+	TRACER_OFFSET         = SYSCALLS_OFFSET + unsafe.Sizeof([MAX_SYSCALLS]*u8{}) // TODO: is this correct?
+)
+
+type Tracer struct {
+	// Contains the state at every instruction in order of execution
+	Log []uint64
+}
+
+// Logs the state of a single instruction
+func (tracer *Tracer) Trace(state [12]uint64) {
+	tracer.Log = append(tracer.Log, state[:]...)
+}
+
+func (tracer *Tracer) Consume(amount u64) {
+	panic("not implemented")
+}
+
+func (tracer *Tracer) GetRemaining() u64 {
+	panic("not implemented")
+}
+
+// Use this method to print the log of this tracer
+func (tracer *Tracer) Write(output io.Writer, analysis *Analysis) error {
+	panic("not implemented")
+}
+
+// Compares an interpreter trace and a JIT trace.
+// The log of the JIT can be longer because it only validates the instruction meter at branches.
+func (tracer *Tracer) Compare(interpreter *Tracer, jit *Tracer) bool {
+	panic("not implemented")
+}
+
+type InstructionMeter interface {
+	/// Consume instructions
+	Consume(amount u64)
+	/// Get the number of remaining instructions allowed
+	GetRemaining() u64
 }

@@ -1,6 +1,11 @@
 package sbf
 
-import "fmt"
+import (
+	"encoding/binary"
+	"fmt"
+
+	"github.com/spaolacci/murmur3"
+)
 
 const (
 	// SBF version flag
@@ -458,4 +463,113 @@ func (insn *Insn) to_array() [INSN_SIZE]uint8 {
 func (insn *Insn) to_vec() []uint8 {
 	arr := insn.to_array()
 	return arr[:]
+}
+
+// /// Get the instruction at `idx` of an eBPF program. `idx` is the index (number) of the
+// /// instruction (not a byte offset). The first instruction has index 0.
+// ///
+// /// # Panics
+// ///
+// /// Panics if it is not possible to get the instruction (if idx is too high, or last instruction is
+// /// incomplete).
+// ///
+// /// # Examples
+// ///
+// /// ```
+// /// use solana_rbpf::ebpf;
+// ///
+// /// let prog = &[
+// ///     0xb7, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// ///     0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+// ///     ];
+// /// let insn = ebpf::get_insn(prog, 1);
+// /// assert_eq!(insn.opc, 0x95);
+// /// ```
+// ///
+// /// The example below will panic, since the last instruction is not complete and cannot be loaded.
+// ///
+// /// ```rust,should_panic
+// /// use solana_rbpf::ebpf;
+// ///
+// /// let prog = &[
+// ///     0xb7, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// ///     0x95, 0x00, 0x00, 0x00, 0x00, 0x00              // two bytes missing
+// ///     ];
+// /// let insn = ebpf::get_insn(prog, 1);
+// /// ```
+//
+//	pub fn get_insn(prog: &[u8], pc: usize) -> Insn {
+//	    // This guard should not be needed in most cases, since the verifier already checks the program
+//	    // size, and indexes should be fine in the interpreter/JIT. But this function is publicly
+//	    // available and user can call it with any `pc`, so we have to check anyway.
+//	    debug_assert!(
+//	        (pc + 1) * INSN_SIZE <= prog.len(),
+//	        "cannot reach instruction at index {:?} in program containing {:?} bytes",
+//	        pc,
+//	        prog.len()
+//	    );
+//	    get_insn_unchecked(prog, pc)
+//	}
+func GetInsn(prog []uint8, pc uint64) Insn {
+	// This guard should not be needed in most cases, since the verifier already checks the program
+	// size, and indexes should be fine in the interpreter/JIT. But this function is publicly
+	// available and user can call it with any `pc`, so we have to check anyway.
+	if (pc+1)*INSN_SIZE > uint64(len(prog)) {
+		panic(fmt.Sprintf(
+			"cannot reach instruction at index %d in program containing %d bytes",
+			pc, len(prog),
+		))
+	}
+	return GetInsnUnchecked(prog, pc)
+}
+
+// /// Same as `get_insn` except not checked
+//
+//	pub fn get_insn_unchecked(prog: &[u8], pc: usize) -> Insn {
+//	    Insn {
+//	        ptr: pc,
+//	        opc: prog[INSN_SIZE * pc],
+//	        dst: prog[INSN_SIZE * pc + 1] & 0x0f,
+//	        src: (prog[INSN_SIZE * pc + 1] & 0xf0) >> 4,
+//	        off: LittleEndian::read_i16(&prog[(INSN_SIZE * pc + 2)..]),
+//	        imm: LittleEndian::read_i32(&prog[(INSN_SIZE * pc + 4)..]) as i64,
+//	    }
+//	}
+func GetInsnUnchecked(prog []uint8, pc uint64) Insn {
+	return Insn{
+		Ptr: pc,
+		Opc: prog[INSN_SIZE*pc],
+		Dst: prog[INSN_SIZE*pc+1] & 0x0f,
+		Src: (prog[INSN_SIZE*pc+1] & 0xf0) >> 4,
+		Off: int16(binary.LittleEndian.Uint16(prog[INSN_SIZE*pc+2:])),
+		Imm: int64(binary.LittleEndian.Uint32(prog[INSN_SIZE*pc+4:])),
+	}
+}
+
+// /// Merge the two halves of a LD_DW_IMM instruction
+//
+//	pub fn augment_lddw_unchecked(prog: &[u8], insn: &mut Insn) {
+//	    let more_significant_half = LittleEndian::read_i32(&prog[((insn.ptr + 1) * INSN_SIZE + 4)..]);
+//	    insn.imm = ((insn.imm as u64 & 0xffffffff) | ((more_significant_half as u64) << 32)) as i64;
+//	}
+func AugmentLddwUnchecked(prog []uint8, insn *Insn) {
+	more_significant_half := binary.LittleEndian.Uint32(prog[(insn.Ptr+1)*INSN_SIZE+4:])
+	insn.Imm = int64((uint64(insn.Imm&0xffffffff) | (uint64(more_significant_half) << 32)))
+}
+
+// /// Hash a symbol name
+// ///
+// /// This function is used by both the relocator and the VM to translate symbol names
+// /// into a 32 bit id used to identify a syscall function.  The 32 bit id is used in the
+// /// eBPF `call` instruction's imm field.
+//
+//	pub fn hash_symbol_name(name: &[u8]) -> u32 {
+//	    let mut hasher = Murmur3Hasher::default();
+//	    Hash::hash_slice(name, &mut hasher);
+//	    hasher.finish()
+//	}
+func HashSymbolName(name []uint8) uint32 {
+	hasher := murmur3.New32()
+	hasher.Write(name)
+	return hasher.Sum32()
 }

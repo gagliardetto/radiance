@@ -144,6 +144,10 @@ func (a u64_) saturating_sub(b u64_) u64_ {
 	return a - b
 }
 
+func (a u64_) trailing_zeros() u64 {
+	return u64(bits.TrailingZeros64(uint64(a)))
+}
+
 func (a u64_) saturating_mul(b u64_) u64_ {
 	if a == 0 || b == 0 {
 		return 0
@@ -199,4 +203,8 @@ func boolAsU8(b bool) uint8 {
 		return 1
 	}
 	return 0
+}
+
+func rotate_right(x, k uint64) uint64 {
+	return x>>k | x<<(64-k)
 }

@@ -3,6 +3,7 @@ package sbf
 import (
 	"encoding/binary"
 	"fmt"
+	"unsafe"
 )
 
 type buffer struct {
@@ -33,6 +34,10 @@ func (b *buffer) ResizeReset(capacity int) {
 		b.b = make([]byte, capacity)
 	}
 	b.i = 0
+}
+
+func (b *buffer) Pointer() unsafe.Pointer {
+	return unsafe.Pointer(&b.b[0])
 }
 
 func (b *buffer) Byte(v byte) {
@@ -127,6 +132,7 @@ func (b *buffer) Uint64SliceSetByIndex(index uint64, val uint64) error {
 }
 
 func (b *buffer) Uint64SliceGetByIndex(index uint64) uint64 {
+	// TODO: what is it is really outside the bounds?
 	// check if the index is valid
 	if !b.CanFit(index, 8) {
 		return 0
