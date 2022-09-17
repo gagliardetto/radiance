@@ -1549,105 +1549,188 @@ func (jit *JitCompiler) Compile(executable *Executable) error {
 			//                 ebpf::JSLE_REG   => emit_conditional_branch_reg(self, 0x8e, false, src, dst, target_pc),
 		case JSLE_REG:
 			emit_conditional_branch_reg(jit, 0x8e, false, src, dst, int(targetPc))
+			//                 ebpf::CALL_IMM   => {
+			//                     // For JIT, syscalls MUST be registered at compile time. They can be
+			//                     // updated later, but not created after compiling (we need the address of the
+			//                     // syscall function in the JIT-compiled program).
+
+			//                     let mut resolved = false;
+			//                     let (syscalls, calls) = if self.config.static_syscalls {
+			//                         (insn.src == 0, insn.src != 0)
+			//                     } else {
+			//                         (true, true)
+			//                     };
+		case CALL_IMM:
+			{
+				// For JIT, syscalls MUST be registered at compile time. They can be
+				// updated later, but not created after compiling (we need the address of the
+				// syscall function in the JIT-compiled program).
+
+				var resolved = false
+				var syscalls, calls bool
+				if jit.config.StaticSyscalls {
+					syscalls = insn.Src == 0
+					calls = insn.Src != 0
+				} else {
+					syscalls = true
+					calls = true
+				}
+
+				//                     if syscalls {
+				//                         if let Some(syscall) = executable.get_syscall_registry().lookup_syscall(insn.imm as u32) {
+				//                             if self.config.enable_instruction_meter {
+				//                                 emit_validate_and_profile_instruction_count(self, true, Some(0));
+				//                             }
+				//                             emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, syscall.function as *const u8 as i64));
+				//                             emit_ins(self, X86Instruction::load(OperandSize::S64, R10, RAX, X86IndirectAccess::Offset(ProgramEnvironment::SYSCALLS_OFFSET as i32 + syscall.context_object_slot as i32 * 8 + self.program_argument_key)));
+				//                             emit_ins(self, X86Instruction::call_immediate(self.relative_to_anchor(ANCHOR_SYSCALL, 5)));
+				//                             if self.config.enable_instruction_meter {
+				//                                 emit_undo_profile_instruction_count(self, 0);
+				//                             }
+				//                             // Throw error if the result indicates one
+				//                             emit_ins(self, X86Instruction::cmp_immediate(OperandSize::S64, R11, 0, Some(X86IndirectAccess::Offset(0))));
+				//                             emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
+				//                             emit_ins(self, X86Instruction::conditional_jump_immediate(0x85, self.relative_to_anchor(ANCHOR_RUST_EXCEPTION, 6)));
+
+				//	        resolved = true;
+				//	    }
+				//	}
+				if syscalls {
+					if syscall, ok := executable.syscallRegistry.LookupSyscall(uint32(insn.Imm)); ok {
+						if jit.config.EnableInstructionMeter {
+							emit_validate_and_profile_instruction_count(jit, true, intRef(0))
+						}
+						syscallF := syscall.Function
+						// TODO: what is this?
+						emit_ins(jit, LoadImmediate(OperandSizeS64, R11, i64(uintptr(unsafe.Pointer(&(syscallF))))))
+						emit_ins(jit, Load(OperandSizeS64, R10, RAX, X86IndirectAccessOffset(i32(u64(SYSCALLS_OFFSET)+syscall.ContextObjectSlot*8+u64(jit.programArgumentKey)))))
+						emit_ins(jit, CallImmediate(jit.relativeToAnchor(ANCHOR_SYSCALL, 5)))
+						if jit.config.EnableInstructionMeter {
+							emit_undo_profile_instruction_count(jit, 0)
+						}
+						// Throw error if the result indicates one
+						emit_ins(jit, CmpImmediate(OperandSizeS64, R11, 0, X86IndirectAccessOffset(0)))
+						emit_ins(jit, LoadImmediate(OperandSizeS64, R11, int64(jit.pc)))
+						emit_ins(jit, ConditionalJumpImmediate(0x85, jit.relativeToAnchor(ANCHOR_RUST_EXCEPTION, 6)))
+
+						resolved = true
+					}
+				}
+
+				//                     if calls {
+				//                         if let Some(target_pc) = executable.lookup_bpf_function(insn.imm as u32) {
+				//                             emit_bpf_call(self, Value::Constant64(target_pc as i64, false));
+				//                             resolved = true;
+				//                         }
+				//                     }
+
+				//                     if !resolved {
+				//                         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
+				//                         emit_ins(self, X86Instruction::jump_immediate(self.relative_to_anchor(ANCHOR_CALL_UNSUPPORTED_INSTRUCTION, 5)));
+				//                     }
+				//                 },
+				if calls {
+					if targetPC, ok := executable.LookupBPFFunction(uint32(insn.Imm)); ok {
+						emit_bpf_call(jit, &Constant64{int64(targetPC), false})
+						resolved = true
+					}
+				}
+
+				if !resolved {
+					emit_ins(jit, LoadImmediate(OperandSizeS64, R11, int64(jit.pc)))
+					emit_ins(jit, JumpImmediate(jit.relativeToAnchor(ANCHOR_CALL_UNSUPPORTED_INSTRUCTION, 5)))
+				}
+			}
+
+		//                 ebpf::CALL_REG  => {
+		//                     emit_bpf_call(self, Value::Register(REGISTER_MAP[insn.imm as usize]));
+		//                 },
+		case CALL_REG:
+			emit_bpf_call(jit, &Register{REGISTER_MAP[insn.Imm]})
+			//                 ebpf::EXIT      => {
+			//                     let call_depth_access = X86IndirectAccess::Offset(slot_on_environment_stack(self, EnvironmentStackSlot::CallDepth));
+			//                     emit_ins(self, X86Instruction::load(OperandSize::S64, RBP, REGISTER_MAP[FRAME_PTR_REG], call_depth_access));
+
+			//                     // If CallDepth == 0, we've reached the exit instruction of the entry point
+			//                     emit_ins(self, X86Instruction::cmp_immediate(OperandSize::S32, REGISTER_MAP[FRAME_PTR_REG], 0, None));
+			//                     if self.config.enable_instruction_meter {
+			//                         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
+			//                     }
+			//                     // we're done
+			//                     emit_ins(self, X86Instruction::conditional_jump_immediate(0x84, self.relative_to_anchor(ANCHOR_EXIT, 6)));
+
+			//                     // else decrement and update CallDepth
+			//                     emit_ins(self, X86Instruction::alu(OperandSize::S64, 0x81, 5, REGISTER_MAP[FRAME_PTR_REG], 1, None));
+			//                     emit_ins(self, X86Instruction::store(OperandSize::S64, REGISTER_MAP[FRAME_PTR_REG], RBP, call_depth_access));
+
+			//                     // and return
+			//                     emit_validate_and_profile_instruction_count(self, false, Some(0));
+			//                     emit_ins(self, X86Instruction::return_near());
+			//                 },
+		case EXIT:
+			callDepthAccess := X86IndirectAccessOffset(slotOnEnvironmentStack(jit, CallDepth))
+			emit_ins(jit, Load(OperandSizeS64, RBP, REGISTER_MAP[FRAME_PTR_REG], callDepthAccess))
+
+			// If CallDepth == 0, we've reached the exit instruction of the entry point
+			emit_ins(jit, CmpImmediate(OperandSizeS32, REGISTER_MAP[FRAME_PTR_REG], 0, nil))
+			if jit.config.EnableInstructionMeter {
+				emit_ins(jit, LoadImmediate(OperandSizeS64, R11, int64(jit.pc)))
+			}
+			// we're done
+			emit_ins(jit, ConditionalJumpImmediate(0x84, jit.relativeToAnchor(ANCHOR_EXIT, 6)))
+
+			// else decrement and update CallDepth
+			emit_ins(jit, Alu(OperandSizeS64, 0x81, 5, REGISTER_MAP[FRAME_PTR_REG], 1, nil))
+			emit_ins(jit, Store(OperandSizeS64, REGISTER_MAP[FRAME_PTR_REG], RBP, callDepthAccess))
+
+			// and return
+			emit_validate_and_profile_instruction_count(jit, false, intRef(0))
+			emit_ins(jit, ReturnNear())
+
+			//                 _               => return Err(EbpfError::UnsupportedInstruction(self.pc + ebpf::ELF_INSN_DUMP_OFFSET)),
+		default:
+			return &UnsupportedInstruction{u64(jit.pc + ELF_INSN_DUMP_OFFSET)}
+			//             }
 		}
+		//             self.pc += 1;
+		jit.pc += 1
+		//         }
 	}
+	// Bumper so that the linear search of ANCHOR_TRANSLATE_PC can not run off
+	//         self.result.pc_section[self.pc] = unsafe { text_section_base.add(self.offset_in_text_section) } as usize;
+	jit.result.PcSection.Uint64SliceSetByIndex(u64(jit.pc), fromUnsafePointerToUint64(unsafe.Add(textSectionBase, jit.offsetInTextSection)))
+
+	//Bumper in case there was no final exit
+	//         if self.offset_in_text_section + MAX_MACHINE_CODE_LENGTH_PER_INSTRUCTION > self.result.text_section.len() {
+	//             return Err(EbpfError::ExhaustedTextSegment(self.pc));
+	//         }
+	if jit.offsetInTextSection+MAX_MACHINE_CODE_LENGTH_PER_INSTRUCTION > jit.result.TextSection.Len() {
+		return &ExhaustedTextSegment{u64(jit.pc)}
+	}
+	//         emit_validate_and_profile_instruction_count(self, true, Some(self.pc + 2));
+	emit_validate_and_profile_instruction_count(jit, true, intRef(jit.pc+2))
+	//         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
+	emit_ins(jit, LoadImmediate(OperandSizeS64, R11, int64(jit.pc)))
+	//         emit_set_exception_kind::<E>(self, EbpfError::ExecutionOverrun(0));
+	emit_set_exception_kind(jit, &ExecutionOverrun{0})
+	//         emit_ins(self, X86Instruction::jump_immediate(self.relative_to_anchor(ANCHOR_EXCEPTION_AT, 5)));
+	emit_ins(jit, JumpImmediate(jit.relativeToAnchor(ANCHOR_EXCEPTION_AT, 5)))
+
+	//         self.resolve_jumps();
+	jit.resolve_jumps()
+	//         self.result.seal(self.offset_in_text_section)?;
+	jit.result.Seal(u64(jit.offsetInTextSection))
+
+	// Delete secrets
+	//         self.environment_stack_key = 0;
+	jit.environmentStackKey = 0
+	//         self.program_argument_key = 0;
+	jit.programArgumentKey = 0
+
+	//	    Ok(())
 	return nil
+	//	}
 }
-
-//                 ebpf::CALL_IMM   => {
-//                     // For JIT, syscalls MUST be registered at compile time. They can be
-//                     // updated later, but not created after compiling (we need the address of the
-//                     // syscall function in the JIT-compiled program).
-
-//                     let mut resolved = false;
-//                     let (syscalls, calls) = if self.config.static_syscalls {
-//                         (insn.src == 0, insn.src != 0)
-//                     } else {
-//                         (true, true)
-//                     };
-
-//                     if syscalls {
-//                         if let Some(syscall) = executable.get_syscall_registry().lookup_syscall(insn.imm as u32) {
-//                             if self.config.enable_instruction_meter {
-//                                 emit_validate_and_profile_instruction_count(self, true, Some(0));
-//                             }
-//                             emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, syscall.function as *const u8 as i64));
-//                             emit_ins(self, X86Instruction::load(OperandSize::S64, R10, RAX, X86IndirectAccess::Offset(ProgramEnvironment::SYSCALLS_OFFSET as i32 + syscall.context_object_slot as i32 * 8 + self.program_argument_key)));
-//                             emit_ins(self, X86Instruction::call_immediate(self.relative_to_anchor(ANCHOR_SYSCALL, 5)));
-//                             if self.config.enable_instruction_meter {
-//                                 emit_undo_profile_instruction_count(self, 0);
-//                             }
-//                             // Throw error if the result indicates one
-//                             emit_ins(self, X86Instruction::cmp_immediate(OperandSize::S64, R11, 0, Some(X86IndirectAccess::Offset(0))));
-//                             emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
-//                             emit_ins(self, X86Instruction::conditional_jump_immediate(0x85, self.relative_to_anchor(ANCHOR_RUST_EXCEPTION, 6)));
-
-//                             resolved = true;
-//                         }
-//                     }
-
-//                     if calls {
-//                         if let Some(target_pc) = executable.lookup_bpf_function(insn.imm as u32) {
-//                             emit_bpf_call(self, Value::Constant64(target_pc as i64, false));
-//                             resolved = true;
-//                         }
-//                     }
-
-//                     if !resolved {
-//                         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
-//                         emit_ins(self, X86Instruction::jump_immediate(self.relative_to_anchor(ANCHOR_CALL_UNSUPPORTED_INSTRUCTION, 5)));
-//                     }
-//                 },
-//                 ebpf::CALL_REG  => {
-//                     emit_bpf_call(self, Value::Register(REGISTER_MAP[insn.imm as usize]));
-//                 },
-//                 ebpf::EXIT      => {
-//                     let call_depth_access = X86IndirectAccess::Offset(slot_on_environment_stack(self, EnvironmentStackSlot::CallDepth));
-//                     emit_ins(self, X86Instruction::load(OperandSize::S64, RBP, REGISTER_MAP[FRAME_PTR_REG], call_depth_access));
-
-//                     // If CallDepth == 0, we've reached the exit instruction of the entry point
-//                     emit_ins(self, X86Instruction::cmp_immediate(OperandSize::S32, REGISTER_MAP[FRAME_PTR_REG], 0, None));
-//                     if self.config.enable_instruction_meter {
-//                         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
-//                     }
-//                     // we're done
-//                     emit_ins(self, X86Instruction::conditional_jump_immediate(0x84, self.relative_to_anchor(ANCHOR_EXIT, 6)));
-
-//                     // else decrement and update CallDepth
-//                     emit_ins(self, X86Instruction::alu(OperandSize::S64, 0x81, 5, REGISTER_MAP[FRAME_PTR_REG], 1, None));
-//                     emit_ins(self, X86Instruction::store(OperandSize::S64, REGISTER_MAP[FRAME_PTR_REG], RBP, call_depth_access));
-
-//                     // and return
-//                     emit_validate_and_profile_instruction_count(self, false, Some(0));
-//                     emit_ins(self, X86Instruction::return_near());
-//                 },
-
-//                 _               => return Err(EbpfError::UnsupportedInstruction(self.pc + ebpf::ELF_INSN_DUMP_OFFSET)),
-//             }
-
-//             self.pc += 1;
-//         }
-//         // Bumper so that the linear search of ANCHOR_TRANSLATE_PC can not run off
-//         self.result.pc_section[self.pc] = unsafe { text_section_base.add(self.offset_in_text_section) } as usize;
-
-//         // Bumper in case there was no final exit
-//         if self.offset_in_text_section + MAX_MACHINE_CODE_LENGTH_PER_INSTRUCTION > self.result.text_section.len() {
-//             return Err(EbpfError::ExhaustedTextSegment(self.pc));
-//         }
-//         emit_validate_and_profile_instruction_count(self, true, Some(self.pc + 2));
-//         emit_ins(self, X86Instruction::load_immediate(OperandSize::S64, R11, self.pc as i64));
-//         emit_set_exception_kind::<E>(self, EbpfError::ExecutionOverrun(0));
-//         emit_ins(self, X86Instruction::jump_immediate(self.relative_to_anchor(ANCHOR_EXCEPTION_AT, 5)));
-
-//         self.resolve_jumps();
-//         self.result.seal(self.offset_in_text_section)?;
-
-//         // Delete secrets
-//         self.environment_stack_key = 0;
-//         self.program_argument_key = 0;
-
-//         Ok(())
-//     }
 
 func (jit *JitCompiler) generate_prologue(executable *Executable) error {
 	// Place the environment on the stack according to EnvironmentStackSlot

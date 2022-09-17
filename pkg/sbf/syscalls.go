@@ -27,17 +27,17 @@ func PCHash(addr uint64) uint32 {
 }
 
 // Syscall are callback handles from VM to Go. (work in progress)
-type Syscall interface {
+type SyscallFunction interface {
 	Invoke(vm VM, r1, r2, r3, r4, r5 uint64, cuIn int) (r0 uint64, cuOut int, err error)
 }
 
-type SyscallRegistry map[uint32]Syscall
+type SyscallRegistry_ map[uint32]SyscallFunction
 
-func NewSyscallRegistry() SyscallRegistry {
-	return make(SyscallRegistry)
+func NewSyscallRegistry() SyscallRegistry_ {
+	return make(SyscallRegistry_)
 }
 
-func (s SyscallRegistry) Register(name string, syscall Syscall) (hash uint32, ok bool) {
+func (s SyscallRegistry_) Register(name string, syscall SyscallFunction) (hash uint32, ok bool) {
 	hash = SymbolHash(name)
 	if _, exist := s[hash]; exist {
 		return 0, false // collision or duplicate

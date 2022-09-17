@@ -5,7 +5,7 @@ import "github.com/certusone/radiance/pkg/sbf"
 var registry = Syscalls()
 
 // Syscalls creates a registry of all Sealevel syscalls.
-func Syscalls() sbf.SyscallRegistry {
+func Syscalls() sbf.SyscallRegistry_ {
 	reg := sbf.NewSyscallRegistry()
 	reg.Register("abort", SyscallAbort)
 	reg.Register("sol_log_", SyscallLog)

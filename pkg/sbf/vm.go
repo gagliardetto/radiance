@@ -28,7 +28,7 @@ type VM interface {
 type VMOpts struct {
 	// Machine parameters
 	HeapSize int
-	Syscalls SyscallRegistry
+	Syscalls SyscallRegistry_
 	Tracer   TraceSink
 
 	// Execution parameters
@@ -194,3 +194,115 @@ type InstructionMeter interface {
 	/// Get the number of remaining instructions allowed
 	GetRemaining() u64
 }
+
+// Syscall function and binding slot for a context object
+type Syscall struct {
+	// Syscall init
+	Init u64
+	// Call the syscall function
+	Function u64
+	// Slot of context object
+	ContextObjectSlot u64
+}
+
+// Holds the syscall function pointers of an Executable
+type SyscallRegistry struct {
+	// Function pointers by symbol
+	entries map[u32]Syscall
+	// Context object slots by function pointer
+	context_object_slots map[u64]usize
+}
+
+// impl SyscallRegistry {
+//     const MAX_SYSCALLS: usize = 128;
+
+// /// Register a syscall function by its symbol hash
+// pub fn register_syscall_by_hash<'a, C, E: UserDefinedError, O: SyscallObject<E>>(
+//
+//	&mut self,
+//	hash: u32,
+//	init: SyscallInit<'a, C, E>,
+//	function: SyscallFunction<E, &mut O>,
+//
+//	) -> Result<(), EbpfError<E>> {
+//	    let init = init as *const u8 as u64;
+//	    let function = function as *const u8 as u64;
+//	    let context_object_slot = self.entries.len();
+//	    if context_object_slot == SyscallRegistry::MAX_SYSCALLS {
+//	        return Err(EbpfError::TooManySyscalls);
+//	    }
+//	    if self
+//	        .entries
+//	        .insert(
+//	            hash,
+//	            Syscall {
+//	                init,
+//	                function,
+//	                context_object_slot,
+//	            },
+//	        )
+//	        .is_some()
+//	        || self
+//	            .context_object_slots
+//	            .insert(function, context_object_slot)
+//	            .is_some()
+//	    {
+//	        Err(EbpfError::SyscallAlreadyRegistered(hash as usize))
+//	    } else {
+//	        Ok(())
+//	    }
+//	}
+func (registry *SyscallRegistry) RegisterSyscallByHash(hash u32, initf SyscallInit, function SyscallFunction) error {
+	panic("not implemented")
+}
+
+// LookupSyscall
+func (registry *SyscallRegistry) LookupSyscall(hash u32) (Syscall, bool) {
+	panic("not implemented")
+}
+
+// TODO: implement this
+type SyscallInit func(*ExecutionContext) error
+
+// TODO: implement this
+type ExecutionContext struct {
+	// The program environment
+	Environment *ProgramEnvironment
+	// The instruction meter
+	InstructionMeter InstructionMeter
+	// The syscall context object
+	ContextObject *u8
+}
+
+//     /// Register a syscall function by its symbol name
+//     pub fn register_syscall_by_name<'a, C, E: UserDefinedError, O: SyscallObject<E>>(
+//         &mut self,
+//         name: &[u8],
+//         init: SyscallInit<'a, C, E>,
+//         function: SyscallFunction<E, &mut O>,
+//     ) -> Result<(), EbpfError<E>> {
+//         self.register_syscall_by_hash::<C, E, O>(ebpf::hash_symbol_name(name), init, function)
+//     }
+
+//     /// Get a symbol's function pointer and context object slot
+//     pub fn lookup_syscall(&self, hash: u32) -> Option<&Syscall> {
+//         self.entries.get(&hash)
+//     }
+
+//     /// Get a function pointer's and context object slot
+//     pub fn lookup_context_object_slot(&self, function_pointer: u64) -> Option<usize> {
+//         self.context_object_slots.get(&function_pointer).copied()
+//     }
+
+//     /// Get the number of registered syscalls
+//     pub fn get_number_of_syscalls(&self) -> usize {
+//         self.entries.len()
+//     }
+
+//     /// Calculate memory size
+//     pub fn mem_size(&self) -> usize {
+//         mem::size_of::<Self>()
+//             + self.entries.capacity() * mem::size_of::<(u32, Syscall)>()
+//             + self.context_object_slots.capacity() * mem::size_of::<(u64, usize)>()
+//     }
+// }

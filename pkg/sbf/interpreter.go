@@ -19,7 +19,7 @@ type Interpreter struct {
 	entry uint64
 	cuMax int
 
-	syscalls  map[uint32]Syscall
+	syscalls  map[uint32]SyscallFunction
 	funcs     map[uint32]int64
 	vmContext any
 	trace     TraceSink
