@@ -56,22 +56,22 @@ type X86IndirectAccess interface {
 	isX86IndirectAccess()
 }
 
-var _ X86IndirectAccess = X86IndirectAccess_Offset(0)
-var _ X86IndirectAccess = X86IndirectAccess_OffsetIndexShift{0, 0, 0}
+var _ X86IndirectAccess = X86IndirectAccessOffset(0)
+var _ X86IndirectAccess = X86IndirectAccessOffsetIndexShift{0, 0, 0}
 
 // [second_operand + offset]
-type X86IndirectAccess_Offset int32
+type X86IndirectAccessOffset int32
 
-func (X86IndirectAccess_Offset) isX86IndirectAccess() {}
+func (X86IndirectAccessOffset) isX86IndirectAccess() {}
 
 // [second_operand + offset + index << shift]
-type X86IndirectAccess_OffsetIndexShift struct {
+type X86IndirectAccessOffsetIndexShift struct {
 	Offset int32
 	Index  uint8
 	Shift  uint8
 }
 
-func (X86IndirectAccess_OffsetIndexShift) isX86IndirectAccess() {}
+func (X86IndirectAccessOffsetIndexShift) isX86IndirectAccess() {}
 
 type FenceType int
 
@@ -134,7 +134,7 @@ func (self *X86Instruction) Emit(jit *JitCompiler) {
 	if self.modrm {
 		if self.indirect != nil {
 			switch indirect := self.indirect.(type) {
-			case *X86IndirectAccess_Offset:
+			case *X86IndirectAccessOffset:
 				{
 					displacement = int32(*indirect)
 					debug_assert_ne(self.secondOperand&0b111, RSP, "") // Reserved for SIB addressing
@@ -146,7 +146,7 @@ func (self *X86Instruction) Emit(jit *JitCompiler) {
 						modrm.mode = 2
 					}
 				}
-			case *X86IndirectAccess_OffsetIndexShift:
+			case *X86IndirectAccessOffsetIndexShift:
 				displacement = indirect.Offset
 				displacementSize = S32
 				modrm.mode = 2

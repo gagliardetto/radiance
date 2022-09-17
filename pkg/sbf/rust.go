@@ -3,6 +3,7 @@ package sbf
 import (
 	"fmt"
 	"math/bits"
+	"unsafe"
 )
 
 type (
@@ -207,4 +208,9 @@ func boolAsU8(b bool) uint8 {
 
 func rotate_right(x, k uint64) uint64 {
 	return x>>k | x<<(64-k)
+}
+
+// TODO: is this correct? Can it be converted back to a unsafe.Pointer?
+func fromUnsafePointerToUint64(p unsafe.Pointer) uint64 {
+	return u64(uintptr(p))
 }
