@@ -81,19 +81,6 @@ func (b *buffer) Uint64(v uint64) {
 	b.i += 8
 }
 
-func (b *buffer) Nop(length uint8) {
-	maxNop := uint8(len(nops))
-	for length > 0 {
-		if length > maxNop {
-			b.Bytes(nops[maxNop-1][:maxNop])
-			length -= maxNop
-		} else {
-			b.Bytes(nops[length-1][:length])
-			break
-		}
-	}
-}
-
 func uint64SliceSetByIndex(slice []byte, index uint64, val uint64) {
 	start := index * 8
 	end := start + 8
