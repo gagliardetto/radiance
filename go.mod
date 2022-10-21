@@ -24,7 +24,7 @@ require (
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
-	github.com/twmb/franz-go v1.7.1
+	github.com/twmb/franz-go v1.9.0
 	github.com/vbauerster/mpb/v8 v8.0.2
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
