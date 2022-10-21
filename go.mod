@@ -22,7 +22,7 @@ require (
 	github.com/segmentio/textio v1.2.0
 	github.com/slok/go-http-metrics v0.10.0
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.6.0
 	github.com/stretchr/testify v1.8.0
 	github.com/twmb/franz-go v1.7.1
 	github.com/vbauerster/mpb/v8 v8.0.2
