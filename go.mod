@@ -13,7 +13,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/google/nftables v0.0.0-20220611213346-a346d51f53b3
 	github.com/klauspost/compress v1.15.9
-	github.com/linxGnu/grocksdb v1.7.7
+	github.com/linxGnu/grocksdb v1.7.10
 	github.com/lucas-clemente/quic-go v0.27.2
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mr-tron/base58 v1.2.0
