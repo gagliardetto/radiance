@@ -9,6 +9,9 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"runtime"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 // TODO: zstd support
@@ -37,7 +40,18 @@ func OpenTar(rawRd io.Reader) (*tar.Reader, error) {
 	} else if bytes.Equal(magicBytes[:6], []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}) {
 		return nil, fmt.Errorf(".tar.xz not supported yet")
 	} else if bytes.Equal(magicBytes[1:4], []byte{0xb5, 0x2f, 0xfd}) {
-		return nil, fmt.Errorf(".tar.zst not supported yet")
+		uncompressedRd, err = zstd.NewReader(
+			rd,
+			zstd.WithDecoderConcurrency(runtime.NumCPU()*2), // Use multiple goroutines for decompression.
+			// zstd.WithDecoderMaxMemory(16*1024*1024),       // Limit memory usage to 16 MiB.
+			zstd.WithDecoderMaxWindow(32<<20),
+			// zstd.WithDecoderMaxMemory(1<<63),
+			zstd.IgnoreChecksum(false),
+			zstd.WithDecoderLowmem(false),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("invalid .tar.zst: %w", err)
+		}
 	} else {
 		// Presumed uncompressed case.
 		// Peek and see if we can find a valid tar header.
