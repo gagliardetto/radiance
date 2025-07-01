@@ -21,7 +21,6 @@ require (
 	github.com/minio/sha256-simd v1.0.1
 	github.com/novifinancial/serde-reflection/serde-generate/runtime/golang v0.0.0-20220519162058-e5cd3c3b3f3a
 	github.com/segmentio/textio v1.2.0
-	github.com/smcio/go-ethereum v1.15.12-0.20250621134551-8b739407bb93
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/twmb/murmur3 v1.1.8
@@ -41,7 +40,6 @@ require (
 	github.com/dolthub/maphash v0.1.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/leslie-fei/memcore v0.0.0-20240611074219-2f13777e1d72 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20181016162300-f8f6d4d2b643 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect

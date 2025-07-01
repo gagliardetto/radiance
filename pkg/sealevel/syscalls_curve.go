@@ -14,8 +14,8 @@ import (
 	//"github.com/Overclock-Validator/mithril/pkg/mlog"
 	"github.com/Overclock-Validator/mithril/pkg/safemath"
 	"github.com/Overclock-Validator/mithril/pkg/sbpf"
+	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 	"github.com/gtank/ristretto255"
-	bn256 "github.com/smcio/go-ethereum/crypto/bn256/cloudflare"
 )
 
 // curve types
